@@ -32,6 +32,7 @@ cdef class GoldParse:
     cdef public dict brackets
     cdef public object cats
     cdef public dict links
+    cdef public list sent_start_tags
 
     cdef readonly list cand_to_gold
     cdef readonly list gold_to_cand

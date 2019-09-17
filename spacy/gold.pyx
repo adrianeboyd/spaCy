@@ -54,16 +54,17 @@ def tags_to_entities(tags):
 
 
 def merge_sents(sents):
-    m_deps = [[], [], [], [], [], []]
+    m_deps = [[], [], [], [], [], [], []]
     m_brackets = []
     i = 0
-    for (ids, words, tags, heads, labels, ner), brackets in sents:
+    for (ids, words, tags, heads, labels, ner, sent_start_tags), brackets in sents:
         m_deps[0].extend(id_ + i for id_ in ids)
         m_deps[1].extend(words)
         m_deps[2].extend(tags)
         m_deps[3].extend(head + i for head in heads)
         m_deps[4].extend(labels)
         m_deps[5].extend(ner)
+        m_deps[6].extend(sent_start_tags)
         m_brackets.extend((b["first"] + i, b["last"] + i, b["label"])
                           for b in brackets)
         i += len(ids)
@@ -327,8 +328,9 @@ def json_to_tuple(doc):
                 if labels[-1].lower() == "root":
                     labels[-1] = "ROOT"
                 ner.append(token.get("ner", "-"))
+            sent_start_tags = [True] + [False] * (len(words) - 1)
             sents.append([
-                [ids, words, tags, heads, labels, ner],
+                [ids, words, tags, heads, labels, ner, sent_start_tags],
                 sent.get("brackets", [])])
         if sents:
             yield [paragraph.get("raw", None), sents]
@@ -443,13 +445,14 @@ cdef class GoldParse:
     """
     @classmethod
     def from_annot_tuples(cls, doc, annot_tuples, make_projective=False):
-        _, words, tags, heads, deps, entities = annot_tuples
+        _, words, tags, heads, deps, entities, sent_start_tags = annot_tuples
         return cls(doc, words=words, tags=tags, heads=heads, deps=deps,
-                   entities=entities, make_projective=make_projective)
+                   entities=entities, sent_start_tags=sent_start_tags,
+                   make_projective=make_projective)
 
     def __init__(self, doc, annot_tuples=None, words=None, tags=None,
-                 heads=None, deps=None, entities=None, make_projective=False,
-                 cats=None, links=None, **_):
+                 heads=None, deps=None, entities=None, sent_start_tags=None,
+                 make_projective=False, cats=None, links=None, **_):
         """Create a GoldParse.
 
         doc (Doc): The document the annotations refer to.
@@ -462,6 +465,8 @@ cdef class GoldParse:
         entities (iterable): A sequence of named entity annotations, either as
             BILUO tag strings, or as `(start_char, end_char, label)` tuples,
             representing the entity positions.
+        sent_start_tags (iterable): A sequence of booleans representing
+            is_sent_start
         cats (dict): Labels for text classification. Each key in the dictionary
             may be a string or an int, or a `(start_char, end_char, label)`
             tuple, indicating that the label is applied to only part of the
@@ -498,6 +503,8 @@ cdef class GoldParse:
             if not isinstance(entities[0], basestring):
                 # Assume we have entities specified by character offset.
                 entities = biluo_tags_from_offsets(doc, entities)
+        if sent_start_tags is None:
+            sent_start_tags = [None for _ in doc]
 
         self.mem = Pool()
         self.loss = 0
@@ -518,6 +525,7 @@ cdef class GoldParse:
         self.heads = [None] * len(doc)
         self.labels = [None] * len(doc)
         self.ner = [None] * len(doc)
+        self.sent_start_tags = [None] * len(doc)
 
         # This needs to be done before we align the words
         if make_projective and heads is not None and deps is not None:
@@ -542,6 +550,7 @@ cdef class GoldParse:
             if doc[i].text.isspace():
                 self.words[i] = doc[i].text
                 self.tags[i] = "_SP"
+                self.sent_start_tags[i] = False
                 self.heads[i] = None
                 self.labels[i] = None
                 self.ner[i] = "O"
@@ -549,6 +558,7 @@ cdef class GoldParse:
                 if i in i2j_multi:
                     self.words[i] = words[i2j_multi[i]]
                     self.tags[i] = tags[i2j_multi[i]]
+                    self.sent_start_tags[i] = sent_start_tags[i2j_multi[i]]
                     is_last = i2j_multi[i] != i2j_multi.get(i+1)
                     is_first = i2j_multi[i] != i2j_multi.get(i-1)
                     # Set next word in multi-token span as head, until last
@@ -585,6 +595,7 @@ cdef class GoldParse:
             else:
                 self.words[i] = words[gold_i]
                 self.tags[i] = tags[gold_i]
+                self.sent_start_tags[i] = sent_start_tags[gold_i]
                 if heads[gold_i] is None:
                     self.heads[i] = None
                 else:

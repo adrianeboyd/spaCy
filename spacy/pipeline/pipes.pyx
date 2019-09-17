@@ -375,7 +375,12 @@ class Tagger(Pipe):
         self.model = model
         self._rehearsal_model = None
         self.cfg = OrderedDict(sorted(cfg.items()))
-        self.cfg.setdefault("cnn_maxout_pieces", 2)
+        self.cfg.setdefault("cnn_maxout_pieces", 1)
+        self.cfg.setdefault("subword_features", False)
+        self.cfg.setdefault("token_vector_width", 6)
+        self.cfg.setdefault("conv_depth", 1)
+        self.cfg.setdefault("hidden_width", 4)
+        self.cfg.setdefault("pretrained_vectors", None)
 
     @property
     def labels(self):
@@ -422,28 +427,26 @@ class Tagger(Pipe):
         if isinstance(docs, Doc):
             docs = [docs]
         cdef Doc doc
-        cdef int idx = 0
         cdef Vocab vocab = self.vocab
+        cdef int tag_id_idx = vocab.morphology.tag_names.index("S")
         for i, doc in enumerate(docs):
             doc_tag_ids = batch_tag_ids[i]
             if hasattr(doc_tag_ids, "get"):
                 doc_tag_ids = doc_tag_ids.get()
             for j, tag_id in enumerate(doc_tag_ids):
-                # Don't clobber preset POS tags
-                if doc.c[j].tag == 0 and doc.c[j].pos == 0:
-                    # Don't clobber preset lemmas
-                    lemma = doc.c[j].lemma
-                    vocab.morphology.assign_tag_id(&doc.c[j], tag_id)
-                    if lemma != 0 and lemma != doc.c[j].lex.orth:
-                        doc.c[j].lemma = lemma
-                idx += 1
+                # Don't clobber existing sentence boundaries
+                if doc.c[j].sent_start == 0:
+                    if tag_id == tag_id_idx:
+                        doc.c[j].sent_start = 1
+                    else:
+                        doc.c[j].sent_start = -1
             if tensors is not None and len(tensors):
                 if isinstance(doc.tensor, numpy.ndarray) \
                 and not isinstance(tensors[i], numpy.ndarray):
                     doc.extend_tensor(tensors[i].get())
                 else:
                     doc.extend_tensor(tensors[i])
-            doc.is_tagged = True
+            #doc.is_tagged = True
 
     def update(self, docs, golds, drop=0., sgd=None, losses=None):
         self.require_model()
@@ -479,7 +482,7 @@ class Tagger(Pipe):
         guesses = scores.argmax(axis=1)
         known_labels = numpy.ones((scores.shape[0], 1), dtype="f")
         for gold in golds:
-            for tag in gold.tags:
+            for tag in gold.sent_start_tags:
                 if tag is None:
                     correct[idx] = guesses[idx]
                 elif tag in tag_index:
