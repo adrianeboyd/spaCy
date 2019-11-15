@@ -84,6 +84,7 @@ class Scorer(object):
         self.labelled = PRFScore()
         self.labelled_per_dep = dict()
         self.tags = PRFScore()
+        self.tags_no_morph = PRFScore()
         self.ner = PRFScore()
         self.ner_per_ents = dict()
         self.eval_punct = eval_punct
@@ -112,6 +113,13 @@ class Scorer(object):
             i.e. `Token.tag`).
         """
         return self.tags.fscore * 100
+
+    @property
+    def tags_acc_no_morph(self):
+        """RETURNS (float): Part-of-speech tag accuracy (fine grained tags,
+            i.e. `Token.tag`).
+        """
+        return self.tags_no_morph.fscore * 100
 
     @property
     def token_acc(self):
@@ -212,6 +220,7 @@ class Scorer(object):
             "ents_f": self.ents_f,
             "ents_per_type": self.ents_per_type,
             "tags_acc": self.tags_acc,
+            "tags_acc_no_morph": self.tags_acc_no_morph,
             "token_acc": self.token_acc,
             "textcat_score": self.textcat_score,
             "textcats_per_cat": self.textcats_per_cat,
@@ -236,9 +245,11 @@ class Scorer(object):
         gold_deps = set()
         gold_deps_per_dep = {}
         gold_tags = set()
+        gold_tags_no_morph = set()
         gold_ents = set(tags_to_entities([annot[-1] for annot in gold.orig_annot]))
         for id_, word, tag, head, dep, ner in gold.orig_annot:
             gold_tags.add((id_, tag))
+            gold_tags_no_morph.add((id_, tag.split("__")[0]))
             if dep not in (None, "") and dep.lower() not in punct_labels:
                 gold_deps.add((id_, head, dep.lower()))
                 if dep.lower() not in self.labelled_per_dep:
@@ -249,6 +260,7 @@ class Scorer(object):
         cand_deps = set()
         cand_deps_per_dep = {}
         cand_tags = set()
+        cand_tags_no_morph = set()
         for token in doc:
             if token.orth_.isspace():
                 continue
@@ -258,6 +270,7 @@ class Scorer(object):
             else:
                 self.tokens.tp += 1
                 cand_tags.add((gold_i, token.tag_))
+                cand_tags_no_morph.add((gold_i, token.tag_.split("__")[0]))
             if token.dep_.lower() not in punct_labels and token.orth_.strip():
                 gold_head = gold.cand_to_gold[token.head.i]
                 # None is indistinct, so we can't just add it to the set
@@ -302,6 +315,7 @@ class Scorer(object):
             # Score for all ents
             self.ner.score_set(cand_ents, gold_ents)
         self.tags.score_set(cand_tags, gold_tags)
+        self.tags_no_morph.score_set(cand_tags_no_morph, gold_tags_no_morph)
         self.labelled.score_set(cand_deps, gold_deps)
         for dep in self.labelled_per_dep:
             self.labelled_per_dep[dep].score_set(cand_deps_per_dep.get(dep, set()), gold_deps_per_dep.get(dep, set()))

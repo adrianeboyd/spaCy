@@ -504,7 +504,7 @@ def _score_for_model(meta):
     pipes = meta["pipeline"]
     acc = meta["accuracy"]
     if "tagger" in pipes:
-        mean_acc.append(acc["tags_acc"])
+        mean_acc.append(acc["tags_acc", "tags_acc_no_morph"])
     if "parser" in pipes:
         mean_acc.append((acc["uas"] + acc["las"]) / 2)
     if "ner" in pipes:
@@ -588,7 +588,7 @@ def _get_metrics(component):
     if component == "parser":
         return ("las", "uas", "token_acc")
     elif component == "tagger":
-        return ("tags_acc",)
+        return ("tags_acc","tags_acc_no_morph")
     elif component == "ner":
         return ("ents_f", "ents_p", "ents_r")
     return ("token_acc",)
@@ -599,8 +599,8 @@ def _configure_training_output(pipeline, use_gpu, has_beam_widths):
     output_stats = []
     for pipe in pipeline:
         if pipe == "tagger":
-            row_head.extend(["Tag Loss ", " Tag %  "])
-            output_stats.extend(["tag_loss", "tags_acc"])
+            row_head.extend(["Tag Loss ", " Tag %  ", "Tag -M %"])
+            output_stats.extend(["tag_loss", "tags_acc", "tags_acc_no_morph"])
         elif pipe == "parser":
             row_head.extend(["Dep Loss ", " UAS  ", " LAS  "])
             output_stats.extend(["dep_loss", "uas", "las"])
