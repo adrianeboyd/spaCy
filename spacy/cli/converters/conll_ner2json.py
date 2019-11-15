@@ -170,5 +170,7 @@ def n_sents_info(msg, n_sents):
     if n_sents == 1:
         msg.warn(
             "To generate better training data, you may want to group "
-            "sentences into documents with `-n 10`."
+            "sentences into documents with `-n 10`. If each document only "
+            "contains one sentence, the parser will not learn to segment "
+            "sentences."
         )

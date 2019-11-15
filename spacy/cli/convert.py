@@ -39,6 +39,7 @@ FILE_TYPES_STDOUT = ("json", "jsonl")
     converter=("Converter: {}".format(tuple(CONVERTERS.keys())), "option", "c", str),
     lang=("Language (if tokenizer required)", "option", "l", str),
     morphology=("Enable appending morphology to tags", "flag", "m", bool),
+    merge_subtokens=("Merge CoNLL-U subtokens", "flag", "T", bool),
 )
 def convert(
     input_file,
@@ -48,6 +49,7 @@ def convert(
     seg_sents=False,
     model=None,
     morphology=False,
+    merge_subtokens=False,
     converter="auto",
     lang=None,
 ):
@@ -103,6 +105,7 @@ def convert(
         use_morphology=morphology,
         lang=lang,
         model=model,
+        merge_subtokens=merge_subtokens,
         no_print=no_print,
     )
     if output_dir != "-":
