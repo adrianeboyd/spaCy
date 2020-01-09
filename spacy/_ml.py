@@ -565,13 +565,12 @@ class MultiSoftmax(Affine):
 
 
 def build_tagger_model(nr_class, **cfg):
-    embed_size = util.env_opt("embed_size", 2000)
-    if "token_vector_width" in cfg:
-        token_vector_width = cfg["token_vector_width"]
-    else:
-        token_vector_width = util.env_opt("token_vector_width", 96)
-    pretrained_vectors = cfg.get("pretrained_vectors")
-    subword_features = cfg.get("subword_features", True)
+    embed_size = util.env_opt("embed_size", cfg.get("embed_size", 2000))
+    token_vector_width = util.env_opt("token_vector_width",
+            cfg.get("token_vector_width", 96))
+    subword_features = util.env_opt("subword_features",
+                            cfg.get("subword_features", True))
+    pretrained_vectors = cfg.get("pretrained_vectors", None)
     with Model.define_operators({">>": chain, "+": add}):
         if "tok2vec" in cfg:
             tok2vec = cfg["tok2vec"]
@@ -591,13 +590,11 @@ def build_tagger_model(nr_class, **cfg):
 
 
 def build_morphologizer_model(class_nums, **cfg):
-    embed_size = util.env_opt("embed_size", 7000)
-    if "token_vector_width" in cfg:
-        token_vector_width = cfg["token_vector_width"]
-    else:
-        token_vector_width = util.env_opt("token_vector_width", 128)
-    pretrained_vectors = cfg.get("pretrained_vectors")
-    char_embed = cfg.get("char_embed", True)
+    embed_size = util.env_opt("embed_size", cfg.get("embed_size", 2000))
+    token_vector_width = util.env_opt("token_vector_width",
+            cfg.get("token_vector_width", 96))
+    pretrained_vectors = cfg.get("pretrained_vectors", None)
+    char_embed = util.env_opt("char_embed", cfg.get("char_embed", True))
     with Model.define_operators({">>": chain, "+": add, "**": clone}):
         if "tok2vec" in cfg:
             tok2vec = cfg["tok2vec"]
@@ -633,11 +630,12 @@ def SpacyVectors(docs, drop=0.0):
 
 
 def build_text_classifier(nr_class, width=64, **cfg):
-    depth = cfg.get("depth", 2)
-    nr_vector = cfg.get("nr_vector", 5000)
-    pretrained_dims = cfg.get("pretrained_dims", 0)
+    depth = util.env_opt("depth", cfg.get("depth", 2))
+    nr_vector = util.env_opt("nr_vector", cfg.get("nr_vector", 5000))
+    pretrained_dims = util.env_opt("pretrained_dims",
+            cfg.get("pretrained_dims", 0))
     with Model.define_operators({">>": chain, "+": add, "|": concatenate, "**": clone}):
-        if cfg.get("low_data") and pretrained_dims:
+        if util.env_opt("low_data", cfg.get("low_data")) and pretrained_dims:
             model = (
                 SpacyVectors
                 >> flatten_add_lengths
@@ -691,9 +689,10 @@ def build_text_classifier(nr_class, width=64, **cfg):
         )
 
         linear_model = build_bow_text_classifier(
-            nr_class, ngram_size=cfg.get("ngram_size", 1), exclusive_classes=False
+            nr_class, ngram_size=util.env_opt("ngram_size",
+                cfg.get("ngram_size", 1)), exclusive_classes=False
         )
-        if cfg.get("exclusive_classes"):
+        if util.env_opt("exclusive_classes", cfg.get("exclusive_classes")):
             output_layer = Softmax(nr_class, nr_class * 2)
         else:
             output_layer = (
@@ -753,10 +752,10 @@ def build_nel_encoder(embed_width, hidden_width, ner_types, **cfg):
     if "entity_width" not in cfg:
         raise ValueError(Errors.E144.format(param="entity_width"))
 
-    conv_depth = cfg.get("conv_depth", 2)
-    cnn_maxout_pieces = cfg.get("cnn_maxout_pieces", 3)
-    pretrained_vectors = cfg.get("pretrained_vectors", None)
-    context_width = cfg.get("entity_width")
+    conv_depth = util.env_opt("", cfg.get("conv_depth", 2))
+    cnn_maxout_pieces = util.env_opt("", cfg.get("cnn_maxout_pieces", 3))
+    pretrained_vectors = util.env_opt("", cfg.get("pretrained_vectors", None))
+    context_width = util.env_opt("", cfg.get("entity_width"))
 
     with Model.define_operators({">>": chain, "**": clone}):
         # context encoder

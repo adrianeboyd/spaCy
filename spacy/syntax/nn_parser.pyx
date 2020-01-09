@@ -58,7 +58,7 @@ cdef class Parser:
         t2v_pieces = util.env_opt('cnn_maxout_pieces', cfg.get('cnn_maxout_pieces', 3))
         bilstm_depth = util.env_opt('bilstm_depth', cfg.get('bilstm_depth', 0))
         self_attn_depth = util.env_opt('self_attn_depth', cfg.get('self_attn_depth', 0))
-        nr_feature_tokens = cfg.get("nr_feature_tokens", cls.nr_feature)
+        nr_feature_tokens = util.env_opt('nr_feature_tokens', cfg.get("nr_feature_tokens", cls.nr_feature))
         if depth not in (0, 1):
             raise ValueError(TempErrors.T004.format(value=depth))
         parser_maxout_pieces = util.env_opt('parser_maxout_pieces',
