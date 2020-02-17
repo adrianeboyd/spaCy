@@ -30,6 +30,7 @@ from ._parser_model cimport WeightsC, ActivationsC, SizesC, cpu_log_loss
 from ._parser_model cimport get_c_weights, get_c_sizes
 from ._parser_model import ParserModel
 from ..util import link_vectors_to_models, create_default_optimizer
+from ..util import _replace_vectors_with_name, _replace_name_with_vectors
 from ..compat import copy_array
 from ..tokens.doc cimport Doc
 from ..gold cimport GoldParse
@@ -697,11 +698,12 @@ cdef class Parser:
         return example.doc
 
     def to_disk(self, path, exclude=tuple(), **kwargs):
+        cfg = _replace_vectors_with_name(self.cfg)
         serializers = {
             'model': lambda p: (self.model.to_disk(p) if self.model is not True else True),
             'vocab': lambda p: self.vocab.to_disk(p),
             'moves': lambda p: self.moves.to_disk(p, exclude=["strings"]),
-            'cfg': lambda p: srsly.write_json(p, self.cfg)
+            'cfg': lambda p: srsly.write_json(p, cfg)
         }
         exclude = util.get_serialization_exclude(serializers, exclude, kwargs)
         util.to_disk(path, serializers, exclude)
@@ -717,6 +719,7 @@ cdef class Parser:
         util.from_disk(path, deserializers, exclude)
         if 'model' not in exclude:
             path = util.ensure_path(path)
+            self.cfg = _replace_name_with_vectors(self.cfg, self.vocab.vectors)
             if self.model is True:
                 self.model, cfg = self.Model(**self.cfg)
             else:
@@ -731,11 +734,12 @@ cdef class Parser:
         return self
 
     def to_bytes(self, exclude=tuple(), **kwargs):
+        cfg = _replace_vectors_with_name(self.cfg)
         serializers = {
             "model": lambda: (self.model.to_bytes() if self.model is not True else True),
             "vocab": lambda: self.vocab.to_bytes(),
             "moves": lambda: self.moves.to_bytes(exclude=["strings"]),
-            "cfg": lambda: srsly.json_dumps(self.cfg, indent=2, sort_keys=True)
+            "cfg": lambda: srsly.json_dumps(cfg, indent=2, sort_keys=True)
         }
         exclude = util.get_serialization_exclude(serializers, exclude, kwargs)
         return util.to_bytes(serializers, exclude)
@@ -753,6 +757,7 @@ cdef class Parser:
             # TODO: Remove this once we don't have to handle previous models
             if self.cfg.get('pretrained_dims') and 'pretrained_vectors' not in self.cfg:
                 self.cfg['pretrained_vectors'] = self.vocab.vectors
+            self.cfg = _replace_name_with_vectors(self.cfg, self.vocab.vectors)
             if self.model is True:
                 self.model, cfg = self.Model(**self.cfg)
             else:

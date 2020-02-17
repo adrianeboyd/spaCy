@@ -789,6 +789,23 @@ def link_vectors_to_models(vocab):
 VECTORS_KEY = "spacy_pretrained_vectors"
 
 
+def _replace_vectors_with_name(cfg):
+    new_cfg = cfg.copy()
+    if new_cfg.get("pretrained_vectors"):
+        new_cfg["pretrained_vectors"] = cfg["pretrained_vectors"].name
+    return new_cfg
+
+
+def _replace_name_with_vectors(cfg, vectors):
+    if vectors:
+        print(vectors, cfg)
+        if cfg.get("pretrained_vectors") == vectors.name:
+            cfg["pretrained_vectors"] = vectors
+        else:
+            raise ValueError("Unable to find vectors: {}".format(cfg.get("pretrained_vectors")))
+    return cfg
+
+
 def create_default_optimizer():
     ops = get_current_ops()
     learn_rate = env_opt("learn_rate", 0.001)

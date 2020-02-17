@@ -155,7 +155,7 @@ def Tok2Vec(
         else:
             prefix, suffix, shape = (None, None, None)
         if pretrained_vectors is not None:
-            glove = StaticVectors(vectors=pretrained_vectors, nO=width, column=cols.index(ID), dropout=0.0)
+            glove = StaticVectors(vectors=pretrained_vectors.data, nO=width, column=cols.index(ID), dropout=0.0)
 
             if subword_features:
                 embed = uniqued(

@@ -22,6 +22,7 @@ from ..syntax import nonproj
 from ..gold import Example
 from ..attrs import POS, ID
 from ..util import link_vectors_to_models, create_default_optimizer
+from ..util import _replace_vectors_with_name, _replace_name_with_vectors
 from ..parts_of_speech import X
 from ..kb import KnowledgeBase
 from ..ml.component_models import Tok2Vec, build_tagger_model
@@ -673,11 +674,12 @@ class Tagger(Pipe):
             yield
 
     def to_bytes(self, exclude=tuple(), **kwargs):
+        cfg = _replace_vectors_with_name(self.cfg)
         serialize = {}
         if self.model not in (None, True, False):
             serialize["model"] = self.model.to_bytes
         serialize["vocab"] = self.vocab.to_bytes
-        serialize["cfg"] = lambda: srsly.json_dumps(self.cfg)
+        serialize["cfg"] = lambda: srsly.json_dumps(cfg)
         tag_map = dict(sorted(self.vocab.morphology.tag_map.items()))
         serialize["tag_map"] = lambda: srsly.msgpack_dumps(tag_map)
         exclude = util.get_serialization_exclude(serialize, exclude, kwargs)
@@ -688,6 +690,7 @@ class Tagger(Pipe):
             # TODO: Remove this once we don't have to handle previous models
             if self.cfg.get("pretrained_dims") and "pretrained_vectors" not in self.cfg:
                 self.cfg["pretrained_vectors"] = self.vocab.vectors
+            self.cfg = _replace_name_with_vectors(self.cfg, self.vocab.vectors)
             if self.model is True:
                 token_vector_width = util.env_opt(
                     "token_vector_width",
@@ -716,12 +719,13 @@ class Tagger(Pipe):
         return self
 
     def to_disk(self, path, exclude=tuple(), **kwargs):
+        cfg = _replace_vectors_with_name(self.cfg)
         tag_map = dict(sorted(self.vocab.morphology.tag_map.items()))
         serialize = {
             "vocab": lambda p: self.vocab.to_disk(p),
             "tag_map": lambda p: srsly.write_msgpack(p, tag_map),
             "model": lambda p: p.open("wb").write(self.model.to_bytes()),
-            "cfg": lambda p: srsly.write_json(p, self.cfg)
+            "cfg": lambda p: srsly.write_json(p, cfg)
         }
         exclude = util.get_serialization_exclude(serialize, exclude, kwargs)
         util.to_disk(path, serialize, exclude)
@@ -731,6 +735,7 @@ class Tagger(Pipe):
             # TODO: Remove this once we don't have to handle previous models
             if self.cfg.get("pretrained_dims") and "pretrained_vectors" not in self.cfg:
                 self.cfg["pretrained_vectors"] = self.vocab.vectors
+            self.cfg = _replace_name_with_vectors(self.cfg, self.vocab.vectors)
             if self.model is True:
                 self.model = self.Model(**self.cfg)
             with p.open("rb") as file_:
