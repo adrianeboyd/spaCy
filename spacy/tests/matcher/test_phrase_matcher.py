@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import pytest
+import pickle
 from mock import Mock
 from spacy.matcher import PhraseMatcher
 from spacy.tokens import Doc
@@ -266,3 +267,15 @@ def test_phrase_matcher_basic_check(en_vocab):
     pattern = Doc(en_vocab, words=["hello", "world"])
     with pytest.raises(ValueError):
         matcher.add("TEST", pattern)
+
+
+def test_phrase_matcher_pickle(en_vocab):
+    matcher = PhraseMatcher(en_vocab)
+    pattern = Doc(en_vocab, words=["a"])
+    doc = Doc(en_vocab, words=["a", "dog", "and", "a", "cat"])
+    matcher.add("PICKLE_TEST", [pattern])
+    prepickled_matches = matcher(doc)
+    pickled = pickle.dumps(matcher)
+    unpickled_matcher = pickle.loads(pickled)
+    postpickled_matches = unpickled_matcher(doc)
+    assert prepickled_matches == postpickled_matches
