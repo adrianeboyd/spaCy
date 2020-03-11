@@ -13,7 +13,7 @@ from __future__ import unicode_literals, print_function
 import plac
 import random
 from pathlib import Path
-import thinc.extra.datasets
+from ml_datasets import imdb
 
 import spacy
 from spacy.util import minibatch, compounding
@@ -27,6 +27,7 @@ from spacy.util import minibatch, compounding
     init_tok2vec=("Pretrained tok2vec weights", "option", "t2v", Path),
 )
 def main(model=None, output_dir=None, n_iter=20, n_texts=2000, init_tok2vec=None):
+    spacy.util.fix_random_seed()
     if output_dir is not None:
         output_dir = Path(output_dir)
         if not output_dir.exists():
@@ -56,9 +57,7 @@ def main(model=None, output_dir=None, n_iter=20, n_texts=2000, init_tok2vec=None
 
     # load the IMDB dataset
     print("Loading IMDB data...")
-    (train_texts, train_cats), (dev_texts, dev_cats) = load_data()
-    train_texts = train_texts[:n_texts]
-    train_cats = train_cats[:n_texts]
+    (train_texts, train_cats), (dev_texts, dev_cats) = load_data(limit=n_texts)
     print(
         "Using {} examples ({} training, {} evaluation)".format(
             n_texts, len(train_texts), len(dev_texts)
@@ -117,9 +116,8 @@ def main(model=None, output_dir=None, n_iter=20, n_texts=2000, init_tok2vec=None
 def load_data(limit=0, split=0.8):
     """Load data from the IMDB dataset."""
     # Partition off part of the train data for evaluation
-    train_data, _ = thinc.extra.datasets.imdb()
+    train_data, _ = imdb(limit=int(limit/split))
     random.shuffle(train_data)
-    train_data = train_data[-limit:]
     texts, labels = zip(*train_data)
     cats = [{"POSITIVE": bool(y), "NEGATIVE": not bool(y)} for y in labels]
     split = int(len(train_data) * split)
