@@ -42,6 +42,7 @@ DEFAULT_OOV_PROB = -20
         str,
     ),
     model_name=("Optional name for the model meta", "option", "mn", str),
+    unicode_errors=("Unicode error handling for vectors option: strict / ignore / replace", "option", "ue", str),
 )
 def init_model(
     lang,
@@ -53,6 +54,7 @@ def init_model(
     prune_vectors=-1,
     vectors_name=None,
     model_name=None,
+    unicode_errors="strict",
 ):
     """
     Create a new model from raw data, like word frequencies, Brown clusters
@@ -87,7 +89,8 @@ def init_model(
         nlp = create_model(lang, lex_attrs, name=model_name)
     msg.good("Successfully created model")
     if vectors_loc is not None:
-        add_vectors(nlp, vectors_loc, prune_vectors, vectors_name)
+        add_vectors(nlp, vectors_loc, prune_vectors, vectors_name,
+                unicode_errors=unicode_errors)
     vec_added = len(nlp.vocab.vectors)
     lex_added = len(nlp.vocab)
     msg.good(
@@ -100,7 +103,7 @@ def init_model(
     return nlp
 
 
-def open_file(loc):
+def open_file(loc, unicode_errors="strict"):
     """Handle .gz, .tar.gz or unzipped files"""
     loc = ensure_path(loc)
     if tarfile.is_tarfile(str(loc)):
@@ -113,7 +116,7 @@ def open_file(loc):
         file_ = zip_file.open(names[0])
         return (line.decode("utf8") for line in file_)
     else:
-        return loc.open("r", encoding="utf8")
+        return loc.open("r", encoding="utf8", errors=unicode_errors)
 
 
 def read_attrs_from_deprecated(freqs_loc, clusters_loc):
@@ -168,7 +171,7 @@ def create_model(lang, lex_attrs, name=None):
     return nlp
 
 
-def add_vectors(nlp, vectors_loc, prune_vectors, name=None):
+def add_vectors(nlp, vectors_loc, prune_vectors, name=None, unicode_errors="strict"):
     vectors_loc = ensure_path(vectors_loc)
     if vectors_loc and vectors_loc.parts[-1].endswith(".npz"):
         nlp.vocab.vectors = Vectors(data=numpy.load(vectors_loc.open("rb")))
@@ -178,7 +181,7 @@ def add_vectors(nlp, vectors_loc, prune_vectors, name=None):
     else:
         if vectors_loc:
             with msg.loading("Reading vectors from {}".format(vectors_loc)):
-                vectors_data, vector_keys = read_vectors(vectors_loc)
+                vectors_data, vector_keys = read_vectors(vectors_loc, unicode_errors=unicode_errors)
             msg.good("Loaded vectors from {}".format(vectors_loc))
         else:
             vectors_data, vector_keys = (None, None)
@@ -198,8 +201,8 @@ def add_vectors(nlp, vectors_loc, prune_vectors, name=None):
         nlp.vocab.prune_vectors(prune_vectors)
 
 
-def read_vectors(vectors_loc):
-    f = open_file(vectors_loc)
+def read_vectors(vectors_loc, unicode_errors="strict"):
+    f = open_file(vectors_loc, unicode_errors=unicode_errors)
     shape = tuple(int(size) for size in next(f).split())
     vectors_data = numpy.zeros(shape=shape, dtype="f")
     vectors_keys = []
