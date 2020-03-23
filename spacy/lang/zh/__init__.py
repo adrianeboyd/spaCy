@@ -14,7 +14,6 @@ from .tag_map import TAG_MAP
 def try_jieba_import(use_jieba):
     try:
         import jieba
-
         return jieba
     except ImportError:
         if use_jieba:
@@ -25,11 +24,26 @@ def try_jieba_import(use_jieba):
             raise ImportError(msg)
 
 
+def try_pkuseg_import(use_pkuseg):
+    try:
+        import pkuseg
+        return pkuseg.pkuseg("/home/adriane/spacy/tools/spacy-data/scripts/pkuseg-ontonotes-model")
+    except ImportError:
+        if use_pkuseg:
+            msg = (
+                "pkuseg not installed. Either set Chinese.use_pkuseg = False, "
+                "or install it https://github.com/lancopku/pkuseg-python"
+            )
+            raise ImportError(msg)
+
+
 class ChineseTokenizer(DummyTokenizer):
     def __init__(self, cls, nlp=None):
         self.vocab = nlp.vocab if nlp is not None else cls.create_vocab(nlp)
         self.use_jieba = cls.use_jieba
         self.jieba_seg = try_jieba_import(self.use_jieba)
+        self.use_pkuseg = cls.use_pkuseg
+        self.pkuseg_seg = try_pkuseg_import(self.use_pkuseg)
         self.tokenizer = Language.Defaults().create_tokenizer(nlp)
 
     def __call__(self, text):
@@ -65,6 +79,9 @@ class ChineseTokenizer(DummyTokenizer):
                     words.append(word)
                     spaces.append(False)
             return Doc(self.vocab, words=words, spaces=spaces)
+        elif self.use_pkuseg:
+            words = self.pkuseg_seg.cut(text)
+            return Doc(self.vocab, words=words, text=text)
 
         # split into individual characters
         words = []
@@ -88,7 +105,8 @@ class ChineseDefaults(Language.Defaults):
     stop_words = STOP_WORDS
     tag_map = TAG_MAP
     writing_system = {"direction": "ltr", "has_case": False, "has_letters": False}
-    use_jieba = True
+    use_jieba = False
+    use_pkuseg = True
 
     @classmethod
     def create_tokenizer(cls, nlp=None):
