@@ -212,19 +212,14 @@ cdef class Doc:
             text_words = []
             text_spaces = []
             text_pos = 0
-            # normalize words to combine any adjacent whitespace tokens
-            norm_words = []
-            for word in words:
-                if len(norm_words) > 0 and norm_words[-1].isspace() and word.isspace():
-                    norm_words[-1] += word
-                else:
-                    norm_words.append(word)
+            # normalize words to remove any whitespace tokens
+            norm_words = [word for word in words if not word.isspace()]
             # align words with text
             for word in norm_words:
                 try:
                     word_start = text[text_pos:].index(word)
                 except ValueError:
-                    raise ValueError(Errors.E189.format(text=text, words=words))
+                    raise ValueError(Errors.E192.format(text=text, words=words))
                 if word_start > 0:
                     text_words.append(text[text_pos:text_pos+word_start])
                     text_spaces.append(False)

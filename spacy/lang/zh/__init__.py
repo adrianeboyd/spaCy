@@ -30,14 +30,20 @@ def try_jieba_import(use_jieba):
             raise ImportError(msg)
 
 
-def try_pkuseg_import(use_pkuseg, pkuseg_path=""):
+def try_pkuseg_import(use_pkuseg, pkuseg_model=""):
     try:
         import pkuseg
 
-        if pkuseg_path:
-            return pkuseg.pkuseg(pkuseg_path)
-        else:
-            return pkuseg.pkuseg()
+        if pkuseg_model:
+            return pkuseg.pkuseg(pkuseg_model)
+        elif use_pkuseg:
+            msg = (
+                "Chinese.use_pkuseg is True but no pkuseg model was specified. "
+                "Please provide the name of a pretrained model "
+                "or the path to a model with "
+                '`Chinese(meta={"tokenizer": {"config": {"pkuseg_model": name_or_path}}}).'
+            )
+            raise ValueError(msg)
     except ImportError:
         if use_pkuseg:
             msg = (
@@ -48,19 +54,19 @@ def try_pkuseg_import(use_pkuseg, pkuseg_path=""):
             raise ImportError(msg)
     except FileNotFoundError:
         if use_pkuseg:
-            msg = "Unable to load pkuseg model from: " + pkuseg_path
+            msg = "Unable to load pkuseg model from: " + pkuseg_model
             raise FileNotFoundError(msg)
 
 
 class ChineseTokenizer(DummyTokenizer):
-    def __init__(self, cls, nlp=None, settings={}):
+    def __init__(self, cls, nlp=None, config={}):
         self.use_jieba = cls.use_jieba
         self.use_pkuseg = cls.use_pkuseg
-        self.require_pkuseg = settings.get("require_pkuseg", False)
+        self.require_pkuseg = config.get("require_pkuseg", False)
         self.vocab = nlp.vocab if nlp is not None else cls.create_vocab(nlp)
         self.jieba_seg = try_jieba_import(self.use_jieba)
         self.pkuseg_seg = try_pkuseg_import(
-            self.use_pkuseg, pkuseg_path=settings.get("pkuseg_path", "")
+            self.use_pkuseg, pkuseg_model=config.get("pkuseg_model", "")
         )
         self.tokenizer = Language.Defaults().create_tokenizer(nlp)
         self._pkuseg_install_msg = (
@@ -78,36 +84,10 @@ class ChineseTokenizer(DummyTokenizer):
             use_pkuseg = True
         # use jieba
         if use_jieba:
-            jieba_words = list(
+            words = list(
                 [x for x in self.jieba_seg.cut(text, cut_all=False) if x]
             )
-            words = [jieba_words[0]]
-            spaces = [False]
-            for i in range(1, len(jieba_words)):
-                word = jieba_words[i]
-                if word.isspace():
-                    # second token in adjacent whitespace following a
-                    # non-space token
-                    if spaces[-1]:
-                        words.append(word)
-                        spaces.append(False)
-                    # first space token following non-space token
-                    elif word == " " and not words[-1].isspace():
-                        spaces[-1] = True
-                    # token is non-space whitespace or any whitespace following
-                    # a whitespace token
-                    else:
-                        # extend previous whitespace token with more whitespace
-                        if words[-1].isspace():
-                            words[-1] += word
-                        # otherwise it's a new whitespace token
-                        else:
-                            words.append(word)
-                            spaces.append(False)
-                else:
-                    words.append(word)
-                    spaces.append(False)
-            return Doc(self.vocab, words=words, spaces=spaces)
+            return Doc(self.vocab, words=words, text=text)
         elif use_pkuseg:
             words = self.pkuseg_seg.cut(text)
             return Doc(self.vocab, words=words, text=text)
@@ -154,7 +134,7 @@ class ChineseTokenizer(DummyTokenizer):
             (
                 ("features", lambda: features_b),
                 ("weights", lambda: weights_b),
-                ("config", lambda: srsly.msgpack.dumps(self._get_config())),
+                ("cfg", lambda: srsly.json_dumps(self._get_config())),
             )
         )
         return util.to_bytes(serializers, [])
@@ -172,7 +152,7 @@ class ChineseTokenizer(DummyTokenizer):
         deserializers = OrderedDict((
             ("features", deserialize_features),
             ("weights", deserialize_weights),
-            ("config", lambda b: self._set_config(srsly.msgpack_loads(b))),
+            ("cfg", lambda b: self._set_config(srsly.json_loads(b))),
         ))
         util.from_bytes(data, deserializers, [])
 
@@ -202,7 +182,7 @@ class ChineseTokenizer(DummyTokenizer):
 
         serializers = OrderedDict((
             ("pkuseg_model", lambda p: save_pkuseg_model(p)),
-            ("config", lambda p: srsly.write_msgpack(p, self._get_config())),
+            ("cfg", lambda p: srsly.write_json(p, self._get_config())),
         ))
         return util.to_disk(path, serializers, [])
 
@@ -217,7 +197,7 @@ class ChineseTokenizer(DummyTokenizer):
                 self.pkuseg_seg = pkuseg.pkuseg(path)
         serializers = OrderedDict((
             ("pkuseg_model", lambda p: load_pkuseg_model(p)),
-            ("config", lambda p: self._set_config(srsly.read_msgpack(p))),
+            ("cfg", lambda p: self._set_config(srsly.read_json(p))),
         ))
         util.from_disk(path, serializers, [])
 
@@ -234,8 +214,8 @@ class ChineseDefaults(Language.Defaults):
     use_pkuseg = False
 
     @classmethod
-    def create_tokenizer(cls, nlp=None, settings={}):
-        return ChineseTokenizer(cls, nlp, settings=settings)
+    def create_tokenizer(cls, nlp=None, config={}):
+        return ChineseTokenizer(cls, nlp, config=config)
 
 
 class Chinese(Language):
