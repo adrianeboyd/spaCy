@@ -82,7 +82,6 @@ class ChineseTokenizer(DummyTokenizer):
         if self.require_pkuseg:
             use_jieba = False
             use_pkuseg = True
-        # use jieba
         if use_jieba:
             words = list(
                 [x for x in self.jieba_seg.cut(text, cut_all=False) if x]
@@ -93,17 +92,8 @@ class ChineseTokenizer(DummyTokenizer):
             return Doc(self.vocab, words=words, text=text)
 
         # split into individual characters
-        words = []
-        spaces = []
-        for token in self.tokenizer(text):
-            if token.text.isspace():
-                words.append(token.text)
-                spaces.append(False)
-            else:
-                words.extend(list(token.text))
-                spaces.extend([False] * len(token.text))
-                spaces[-1] = bool(token.whitespace_)
-        return Doc(self.vocab, words=words, spaces=spaces)
+        words = list(text)
+        return Doc(self.vocab, words=words, text=text)
 
     def _get_config(self):
         config = {
