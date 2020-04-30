@@ -900,7 +900,7 @@ cdef class Token:
     @property
     def is_oov(self):
         """RETURNS (bool): Whether the token is out-of-vocabulary."""
-        return Lexeme.c_check_flag(self.c.lex, IS_OOV)
+        return self.c.lex.orth not in self.vocab.vectors
 
     @property
     def is_stop(self):
