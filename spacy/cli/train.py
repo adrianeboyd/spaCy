@@ -60,6 +60,7 @@ from .. import about
     tag_map_path=("Location of JSON-formatted tag map", "option", "tm", Path),
     verbose=("Display more information for debug", "flag", "VV", bool),
     debug=("Run data diagnostics before training", "flag", "D", bool),
+    random_seed=("Random seed", "option", "s", int),
     # fmt: on
 )
 def train(
@@ -99,13 +100,15 @@ def train(
     tag_map_path=None,
     verbose=False,
     debug=False,
+    random_seed=0,
 ):
     """
     Train or update a spaCy model. Requires data to be formatted in spaCy's
     JSON format. To convert data from other formats, use the `spacy convert`
     command.
     """
-    util.fix_random_seed()
+    random_seed = int(os.environ.get("SPACY_RANDOM_SEED", random_seed))
+    util.fix_random_seed(random_seed)
     util.set_env_log(verbose)
 
     # Make sure all files and paths exists if they are needed
