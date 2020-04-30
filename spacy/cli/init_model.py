@@ -48,6 +48,7 @@ DEFAULT_OOV_PROB = -20
         str,
     ),
     model_name=("Optional name for the model meta", "option", "mn", str),
+    lexemes_oov_rank=("OOV rank in lexemes.jsonl is zero (default: -1 for no provided OOV rank)", "option", "r", int),
 )
 def init_model(
     lang,
@@ -60,6 +61,7 @@ def init_model(
     prune_vectors=-1,
     vectors_name=None,
     model_name=None,
+    lexemes_oov_rank=-1,
 ):
     """
     Create a new model from raw data, like word frequencies, Brown clusters
@@ -91,7 +93,7 @@ def init_model(
         lex_attrs = read_attrs_from_deprecated(freqs_loc, clusters_loc)
 
     with msg.loading("Creating model..."):
-        nlp = create_model(lang, lex_attrs, name=model_name)
+        nlp = create_model(lang, lex_attrs, name=model_name, lexemes_oov_rank=lexemes_oov_rank)
     msg.good("Successfully created model")
     if vectors_loc is not None:
         add_vectors(nlp, vectors_loc, truncate_vectors, prune_vectors, vectors_name)
@@ -151,20 +153,19 @@ def read_attrs_from_deprecated(freqs_loc, clusters_loc):
     return lex_attrs
 
 
-def create_model(lang, lex_attrs, name=None):
+def create_model(lang, lex_attrs, name=None, lexemes_oov_rank=-1):
     lang_class = get_lang_class(lang)
     nlp = lang_class()
     for lexeme in nlp.vocab:
         lexeme.rank = OOV_RANK
-    lex_added = 0
     for attrs in lex_attrs:
         if "settings" in attrs:
             continue
+        if lexemes_oov_rank >= 0 and attrs["id"] == lexemes_oov_rank:
+            attrs["id"] = OOV_RANK
         lexeme = nlp.vocab[attrs["orth"]]
         lexeme.set_attrs(**attrs)
         lexeme.is_oov = False
-        lex_added += 1
-        lex_added += 1
     if len(nlp.vocab):
         oov_prob = min(lex.prob for lex in nlp.vocab) - 1
     else:
@@ -180,7 +181,7 @@ def add_vectors(nlp, vectors_loc, truncate_vectors, prune_vectors, name=None):
     if vectors_loc and vectors_loc.parts[-1].endswith(".npz"):
         nlp.vocab.vectors = Vectors(data=numpy.load(vectors_loc.open("rb")))
         for lex in nlp.vocab:
-            if lex.rank:
+            if lex.rank != OOV_RANK:
                 nlp.vocab.vectors.add(lex.orth, row=lex.rank)
     else:
         if vectors_loc:
