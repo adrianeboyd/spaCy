@@ -10,7 +10,7 @@ from ...attrs import LANG
 from ...language import Language
 from ...tokens import Doc
 from ...compat import copy_reg
-from ...util import DummyTokenizer
+from ...util import DummyTokenizer, get_words_and_spaces
 
 # Handling for multiple spaces in a row is somewhat awkward, this simplifies
 # the flow by creating a dummy with the same interface.
@@ -56,28 +56,6 @@ def resolve_pos(token):
     return token.pos
 
 
-def get_words_and_spaces(tokenizer, text):
-    """Get the individual tokens that make up the sentence and handle white space.
-
-    Japanese doesn't usually use white space, and MeCab's handling of it for
-    multiple spaces in a row is somewhat awkward.
-    """
-
-    tokens = tokenizer.parseToNodeList(text)
-
-    words = []
-    spaces = []
-    for token in tokens:
-        # If there's more than one space, spaces after the first become tokens
-        for ii in range(len(token.white_space) - 1):
-            words.append(DummySpace)
-            spaces.append(False)
-
-        words.append(token)
-        spaces.append(bool(token.white_space))
-    return words, spaces
-
-
 class JapaneseTokenizer(DummyTokenizer):
     def __init__(self, cls, nlp=None):
         self.vocab = nlp.vocab if nlp is not None else cls.create_vocab(nlp)
@@ -85,8 +63,9 @@ class JapaneseTokenizer(DummyTokenizer):
         self.tokenizer.parseToNodeList("")  # see #2901
 
     def __call__(self, text):
-        dtokens, spaces = get_words_and_spaces(self.tokenizer, text)
+        dtokens = self.tokenizer.parseToNodeList(text)
         words = [x.surface for x in dtokens]
+        words, spaces = get_words_and_spaces(words, text)
         doc = Doc(self.vocab, words=words, spaces=spaces)
         unidic_tags = []
         for token, dtoken in zip(doc, dtokens):
