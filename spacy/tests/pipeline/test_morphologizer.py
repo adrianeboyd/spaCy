@@ -51,16 +51,24 @@ def test_overfitting_IO():
     test_text = "I like blue eggs"
     doc = nlp(test_text)
     gold_morphs = [
-        "Feat=N|POS=NOUN",
-        "Feat=V|POS=VERB",
-        "Feat=J|POS=ADJ",
-        "Feat=N|POS=NOUN",
+        "Feat=N",
+        "Feat=V",
+        "Feat=J",
+        "Feat=N",
+    ]
+    gold_pos_tags = [
+        "NOUN",
+        "VERB",
+        "ADJ",
+        "NOUN",
     ]
     assert [t.morph_ for t in doc] == gold_morphs
+    assert [t.pos_ for t in doc] == gold_pos_tags
 
     # Also test the results are still the same after IO
     with make_tempdir() as tmp_dir:
         nlp.to_disk(tmp_dir)
         nlp2 = util.load_model_from_path(tmp_dir)
         doc2 = nlp2(test_text)
-        assert gold_morphs == [t.morph_ for t in doc2]
+        assert [t.morph_ for t in doc2] == gold_morphs
+        assert [t.pos_ for t in doc2] == gold_pos_tags

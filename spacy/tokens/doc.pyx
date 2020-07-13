@@ -868,8 +868,10 @@ cdef class Doc:
         for i in range(length):
             token = &self.c[i]
             for j in range(n_attrs):
+                value = values[j * stride + i]
+                if attr_ids[j] == MORPH:
+                    self.vocab.morphology.add(self.vocab.strings[value])
                 if attr_ids[j] != TAG:
-                    value = values[j * stride + i]
                     Token.set_struct_attr(token, attr_ids[j], value)
         # Set flags
         self.is_parsed = bool(self.is_parsed or HEAD in attrs)

@@ -30,6 +30,8 @@ class Morphologizer(Tagger):
         self.cfg = dict(sorted(cfg.items()))
         self.cfg.setdefault("labels", {})
         self.cfg.setdefault("morph_pos", {})
+        self.cfg["labels"][Morphology.EMPTY_MORPH] = Morphology.EMPTY_MORPH
+        self.cfg["morph_pos"][Morphology.EMPTY_MORPH] = POS_IDS[""]
 
     @property
     def labels(self):
@@ -43,8 +45,11 @@ class Morphologizer(Tagger):
         morph = Morphology.feats_to_dict(label)
         norm_morph_pos = self.vocab.strings[self.vocab.morphology.add(morph)]
         pos = morph.get("POS", "")
+        if "POS" in morph:
+            morph.pop("POS")
+        norm_morph = self.vocab.strings[self.vocab.morphology.add(morph)]
         if norm_morph_pos not in self.cfg["labels"]:
-            self.cfg["labels"][norm_morph_pos] = norm_morph_pos
+            self.cfg["labels"][norm_morph_pos] = norm_morph
             self.cfg["morph_pos"][norm_morph_pos] = POS_IDS[pos]
         return 1
 
@@ -53,11 +58,11 @@ class Morphologizer(Tagger):
         for example in get_examples():
             for i, token in enumerate(example.reference):
                 pos = token.pos_
-                morph = token.morph
-                norm_morph = self.vocab.strings[self.vocab.morphology.add(morph)]
+                norm_morph = token.morph_
+                norm_morph_dict = Morphology.feats_to_dict(norm_morph)
                 if pos:
-                    morph["POS"] = pos
-                norm_morph_pos = self.vocab.strings[self.vocab.morphology.add(morph)]
+                    norm_morph_dict["POS"] = pos
+                norm_morph_pos = self.vocab.strings[self.vocab.morphology.add(norm_morph_dict)]
                 if norm_morph_pos not in self.cfg["labels"]:
                     self.cfg["labels"][norm_morph_pos] = norm_morph
                     self.cfg["morph_pos"][norm_morph_pos] = POS_IDS[pos]
@@ -94,13 +99,16 @@ class Morphologizer(Tagger):
             for i in range(len(morphs)):
                 pos = pos_tags[i]
                 morph = morphs[i]
+                # POS may align (same value for multiple tokens) when morph
+                # doesn't, so if either is None, treat both as None here so that
+                # truths doesn't end up with an unknown POS+morph combination
+                if pos is None or morph is None:
+                    pos = None
+                    morph = None
                 feats = Morphology.feats_to_dict(morph)
                 if pos:
                     feats["POS"] = pos
-                if len(feats) > 0:
-                    morph = self.vocab.strings[self.vocab.morphology.add(feats)]
-                if morph == "":
-                    morph = Morphology.EMPTY_MORPH
+                morph = self.vocab.strings[self.vocab.morphology.add(feats)]
                 eg_truths.append(morph)
             truths.append(eg_truths)
         d_scores, loss = loss_func(scores, truths)
