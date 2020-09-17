@@ -28,18 +28,18 @@ default_model_config = """
 
 [model.tok2vec.embed]
 @architectures = "spacy.CharacterEmbed.v1"
-width = 128
-rows = 7000
-nM = 64
-nC = 8
+width = 64
+rows = 3000
+nM = 32
+nC = 12
 also_use_static_vectors = false
 
 [model.tok2vec.encode]
 @architectures = "spacy.MaxoutWindowEncoder.v1"
-width = 128
-depth = 4
-window_size = 1
-maxout_pieces = 3
+width = 64
+depth = 2
+window_size = 2
+maxout_pieces = 2
 """
 
 DEFAULT_MORPH_MODEL = Config().from_str(default_model_config)["model"]
