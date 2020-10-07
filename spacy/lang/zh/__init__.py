@@ -17,7 +17,7 @@ from ... import util
 
 
 # fmt: off
-_PKUSEG_INSTALL_MSG = "install spacy-pkuseg with `pip install spacy-pkuseg==0.0.26`"
+_PKUSEG_INSTALL_MSG = "install spacy-pkuseg with `pip install spacy-pkuseg==0.0.27`"
 # fmt: on
 
 DEFAULT_CONFIG = """
