@@ -2,8 +2,8 @@ from typing import Iterator, Sequence, Iterable, Optional, Dict, Callable, List
 from thinc.api import Model, set_dropout_rate, Optimizer, Config
 from itertools import islice
 
-from .trainable_pipe import TrainablePipe
-from ..training import Example, validate_examples, validate_get_examples
+from .pipe import Pipe
+from ..training import Example, validate_examples
 from ..tokens import Doc
 from ..vocab import Vocab
 from ..language import Language
@@ -32,7 +32,7 @@ def make_tok2vec(nlp: Language, name: str, model: Model) -> "Tok2Vec":
     return Tok2Vec(nlp.vocab, model, name)
 
 
-class Tok2Vec(TrainablePipe):
+class Tok2Vec(Pipe):
     """Apply a "token-to-vector" model and set its outputs in the doc.tensor
     attribute. This is mostly useful to share a single subnetwork between multiple
     components, e.g. to have one embedding and CNN network shared between a
@@ -64,7 +64,6 @@ class Tok2Vec(TrainablePipe):
         self.name = name
         self.listeners = []
         self.cfg = {}
-        self._added_strings = set()
 
     def add_listener(self, listener: "Tok2VecListener") -> None:
         """Add a listener for a downstream component. Usually internals."""
@@ -219,7 +218,7 @@ class Tok2Vec(TrainablePipe):
 
         DOCS: https://nightly.spacy.io/api/tok2vec#initialize
         """
-        validate_get_examples(get_examples, "Tok2Vec.initialize")
+        self._ensure_examples(get_examples)
         doc_sample = []
         for example in islice(get_examples(), 10):
             doc_sample.append(example.x)

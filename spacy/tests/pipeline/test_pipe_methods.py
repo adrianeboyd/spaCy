@@ -1,6 +1,6 @@
 import pytest
 from spacy.language import Language
-from spacy.pipeline import TrainablePipe
+from spacy.pipeline import Pipe
 from spacy.util import SimpleFrozenList, get_arg_names
 
 
@@ -389,7 +389,7 @@ def test_pipe_label_data_no_labels(pipe):
 def test_warning_pipe_begin_training():
     with pytest.warns(UserWarning, match="begin_training"):
 
-        class IncompatPipe(TrainablePipe):
+        class IncompatPipe(Pipe):
             def __init__(self):
                 ...
 

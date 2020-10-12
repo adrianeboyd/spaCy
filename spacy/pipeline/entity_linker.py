@@ -10,11 +10,10 @@ import warnings
 from ..kb import KnowledgeBase, Candidate
 from ..ml import empty_kb
 from ..tokens import Doc
-from .pipe import deserialize_config
-from .trainable_pipe import TrainablePipe
+from .pipe import Pipe, deserialize_config
 from ..language import Language
 from ..vocab import Vocab
-from ..training import Example, validate_examples, validate_get_examples
+from ..training import Example, validate_examples
 from ..errors import Errors, Warnings
 from ..util import SimpleFrozenList
 from .. import util
@@ -91,7 +90,7 @@ def make_entity_linker(
     )
 
 
-class EntityLinker(TrainablePipe):
+class EntityLinker(Pipe):
     """Pipeline component for named entity linking.
 
     DOCS: https://nightly.spacy.io/api/entitylinker
@@ -173,7 +172,7 @@ class EntityLinker(TrainablePipe):
 
         DOCS: https://nightly.spacy.io/api/entitylinker#initialize
         """
-        validate_get_examples(get_examples, "EntityLinker.initialize")
+        self._ensure_examples(get_examples)
         if kb_loader is not None:
             self.set_kb(kb_loader)
         self.validate_kb()
@@ -454,6 +453,7 @@ class EntityLinker(TrainablePipe):
         """
         serialize = {}
         serialize["cfg"] = lambda p: srsly.write_json(p, self.cfg)
+        serialize["vocab"] = lambda p: self.vocab.to_disk(p)
         serialize["kb"] = lambda p: self.kb.to_disk(p)
         serialize["model"] = lambda p: self.model.to_disk(p)
         util.to_disk(path, serialize, exclude)
@@ -477,12 +477,11 @@ class EntityLinker(TrainablePipe):
                 raise ValueError(Errors.E149) from None
 
         deserialize = {}
+        deserialize["vocab"] = lambda p: self.vocab.from_disk(p)
         deserialize["cfg"] = lambda p: self.cfg.update(deserialize_config(p))
         deserialize["kb"] = lambda p: self.kb.from_disk(p)
         deserialize["model"] = load_model
         util.from_disk(path, deserialize, exclude)
-        for s in self.kb._added_strings:
-            self.vocab.strings.add(s)
         return self
 
     def rehearse(self, examples, *, sgd=None, losses=None, **config):

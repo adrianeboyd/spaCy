@@ -1,3 +1,4 @@
+from typing import Callable
 import warnings
 from unittest import TestCase
 import pytest
@@ -6,7 +7,8 @@ from numpy import zeros
 from spacy.kb import KnowledgeBase, Writer
 from spacy.vectors import Vectors
 from spacy.language import Language
-from spacy.pipeline import TrainablePipe
+from spacy.pipeline import Pipe
+from spacy.util import registry
 
 from ..util import make_tempdir
 
@@ -43,13 +45,14 @@ def custom_pipe():
         def from_disk(self, path, exclude=tuple(), **kwargs):
             return self
 
-    class MyPipe(TrainablePipe):
+    class MyPipe(Pipe):
         def __init__(self, vocab, model=True, **cfg):
             if cfg:
                 self.cfg = cfg
             else:
                 self.cfg = None
             self.model = SerializableDummy()
+            self.vocab = SerializableDummy()
 
     return MyPipe(None)
 

@@ -50,6 +50,7 @@ components for different language processing tasks and also allows adding
 | [`Lemmatizer`](/api/lemmatizer)                 | Determine the base forms of words.                                                          |
 | [`Morphologizer`](/api/morphologizer)           | Predict morphological features and coarse-grained part-of-speech tags.                      |
 | [`SentenceRecognizer`](/api/sentencerecognizer) | Predict sentence boundaries.                                                                |
+<<<<<<< HEAD
 | [`Sentencizer`](/api/sentencizer)               | Implement rule-based sentence boundary detection that doesn't require the dependency parse. |
 | [`Tagger`](/api/tagger)                         | Predict part-of-speech tags.                                                                |
 | [`TextCategorizer`](/api/textcategorizer)       | Predict categories or labels over the whole document.                                       |
@@ -58,6 +59,10 @@ components for different language processing tasks and also allows adding
 | [`TrainablePipe`](/api/pipe)                    | Class that all trainable pipeline components inherit from.                                  |
 | [`Transformer`](/api/transformer)               | Use a transformer model and set its outputs.                                                |
 | [Other functions](/api/pipeline-functions)      | Automatically apply something to the `Doc`, e.g. to merge spans of tokens.                  |
+=======
+| [Other functions](/api/pipeline-functions)      | Automatically apply something to the `Doc`, e.g. to merge spans of tokens.                  |
+| [`Pipe`](/api/pipe)                             | Base class that all trainable pipeline components inherit from.                             |
+>>>>>>> parent of d093d6343 (TrainablePipe (#6213))
 
 ### Matchers {#architecture-matchers}
 
