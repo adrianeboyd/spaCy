@@ -7,7 +7,6 @@ from spacy.kb import KnowledgeBase, Writer
 from spacy.vectors import Vectors
 from spacy.language import Language
 from spacy.pipeline import TrainablePipe
-from spacy.vocab import Vocab
 
 from ..util import make_tempdir
 
@@ -51,9 +50,8 @@ def custom_pipe():
             else:
                 self.cfg = None
             self.model = SerializableDummy()
-            self.vocab = vocab
 
-    return MyPipe(Vocab())
+    return MyPipe(None)
 
 
 def tagger():
