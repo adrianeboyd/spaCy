@@ -16,7 +16,7 @@ from .span cimport Span
 from .token cimport Token
 from ..lexeme cimport Lexeme, EMPTY_LEXEME
 from ..structs cimport LexemeC, TokenC
-from ..attrs cimport TAG
+from ..attrs cimport TAG, NORM
 
 from .underscore import is_writable_attr
 from ..attrs import intify_attrs
@@ -240,7 +240,8 @@ def _merge(Doc doc, merges):
                 # them. If an attribute name is not valid, set_struct_attr will
                 # ignore it.
                 Token.set_struct_attr(token, attr_name, attr_value)
-                Lexeme.set_struct_attr(<LexemeC*>lex, attr_name, attr_value)
+                if attr_name != NORM:
+                    Lexeme.set_struct_attr(<LexemeC*>lex, attr_name, attr_value)
     # Begin by setting all the head indices to absolute token positions
     # This is easier to work with for now than the offsets
     # Before thinking of something simpler, beware the case where a
@@ -395,7 +396,8 @@ def _split(Doc doc, int token_index, orths, heads, attrs):
                 # them. If an attribute name is not valid, set_struct_attr will
                 # ignore it.
                 Token.set_struct_attr(token, attr_name, get_string_id(attr_value))
-                Lexeme.set_struct_attr(<LexemeC*>token.lex, attr_name, get_string_id(attr_value))
+                if attr_name != NORM:
+                    Lexeme.set_struct_attr(<LexemeC*>token.lex, attr_name, get_string_id(attr_value))
     # Assign correct dependencies to the inner token
     for i, head in enumerate(heads):
         doc.c[token_index + i].head = head
